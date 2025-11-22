@@ -152,34 +152,6 @@ class MainWindow(ctk.CTk):
         else:
             self.folder_org_segment.set("Year Only")
 
-        # Batch size selection
-        batch_label = ctk.CTkLabel(
-            export_frame,
-            text="Batch Size",
-            font=ctk.CTkFont(size=12, weight="bold")
-        )
-        batch_label.pack(pady=(10, 5), padx=10, anchor="w")
-
-        batch_frame = ctk.CTkFrame(export_frame, fg_color="transparent")
-        batch_frame.pack(fill="x", padx=10, pady=5)
-
-        self.batch_size_var = ctk.StringVar(value=str(self.settings_manager.get_batch_size()))
-        self.batch_dropdown = ctk.CTkOptionMenu(
-            batch_frame,
-            variable=self.batch_size_var,
-            values=[str(x) for x in AppConfig.BATCH_SIZE_OPTIONS],
-            command=self._on_batch_size_changed
-        )
-        self.batch_dropdown.pack(side="left", padx=(0, 5))
-
-        batch_info = ctk.CTkLabel(
-            batch_frame,
-            text="files per batch",
-            font=ctk.CTkFont(size=11),
-            text_color="gray"
-        )
-        batch_info.pack(side="left")
-
         # Delete checkbox
         self.delete_var = ctk.BooleanVar(value=self.settings_manager.get_delete_after_export())
         delete_check = ctk.CTkCheckBox(
@@ -309,12 +281,6 @@ class MainWindow(ctk.CTk):
         self.settings_manager.set_folder_organization(org)
         logger.info(f"Folder organization changed to: {org.value}")
 
-    def _on_batch_size_changed(self, value: str):
-        """Handle batch size change"""
-        batch_size = int(value)
-        self.settings_manager.set_batch_size(batch_size)
-        logger.info(f"Batch size changed to: {batch_size}")
-
     def _on_delete_option_changed(self):
         """Handle delete after export option change"""
         delete = self.delete_var.get()
@@ -334,6 +300,7 @@ class MainWindow(ctk.CTk):
         self._is_analyzing = True
         self._set_ui_state(analyzing=True)
         self.progress_panel.reset()
+        self.photo_tree.show_loading()
 
         # Start analysis thread
         thread = threading.Thread(target=self._analyze_photos, daemon=True)
@@ -359,6 +326,7 @@ class MainWindow(ctk.CTk):
         self._is_analyzing = False
         self._set_ui_state(analyzing=False)
 
+        self.photo_tree.hide_loading()
         self.photo_tree.load_photos(self._year_stats)
         self.progress_panel.reset()
 
@@ -372,6 +340,7 @@ class MainWindow(ctk.CTk):
         """Handle analysis error"""
         self._is_analyzing = False
         self._set_ui_state(analyzing=False)
+        self.photo_tree.hide_loading()
         self.progress_panel.set_error(error_msg)
         messagebox.showerror("Analysis Error", f"Failed to analyze media:\n{error_msg}")
 

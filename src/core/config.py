@@ -32,8 +32,7 @@ class AppConfig:
     ]
 
     # Transfer settings
-    BATCH_SIZE = 50  # Number of files to transfer before checking device connection (default)
-    BATCH_SIZE_OPTIONS = [10, 25, 50, 100, 200]  # Available batch size options
+    BATCH_SIZE = 10  # Number of files to transfer before checking device connection
     BUFFER_SIZE = 8192  # Buffer size for file operations
 
     # Progress update frequency

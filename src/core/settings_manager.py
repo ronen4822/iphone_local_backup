@@ -4,8 +4,8 @@ import logging
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
-from dataclasses import dataclass, asdict
 from enum import Enum
+from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +16,10 @@ class FolderOrganization(Enum):
     YEAR_ONLY = "year_only"    # Only year folders
 
 
-@dataclass
-class ExportStats:
+class ExportStats(BaseModel):
     """Statistics about export operations"""
+    model_config = ConfigDict(extra="ignore")
+
     total_files_exported: int = 0
     total_size_exported: int = 0  # in bytes
     last_export_date: Optional[str] = None
@@ -35,12 +36,13 @@ class ExportStats:
         return self.total_size_exported / (1024 * 1024 * 1024)
 
 
-@dataclass
-class UserSettings:
+class UserSettings(BaseModel):
     """User preferences and settings"""
+    model_config = ConfigDict(extra="ignore")
+
     export_path: str = ""
     folder_organization: str = FolderOrganization.YEAR_MONTH.value
-    batch_size: int = 50
+    batch_size: int = 10
     delete_after_export: bool = True
 
 
@@ -112,7 +114,7 @@ class SettingsManager:
         """Save current settings to file"""
         try:
             with open(self._settings_file, 'w') as f:
-                json.dump(asdict(self.settings), f, indent=2)
+                json.dump(self.settings.model_dump(), f, indent=2)
             logger.info("Settings saved successfully")
             return True
         except Exception as e:
@@ -123,7 +125,7 @@ class SettingsManager:
         """Save current statistics to file"""
         try:
             with open(self._stats_file, 'w') as f:
-                json.dump(asdict(self.stats), f, indent=2)
+                json.dump(self.stats.model_dump(), f, indent=2)
             logger.info("Stats saved successfully")
             return True
         except Exception as e:
@@ -154,11 +156,6 @@ class SettingsManager:
     def get_batch_size(self) -> int:
         """Get batch size preference"""
         return self.settings.batch_size
-
-    def set_batch_size(self, size: int) -> None:
-        """Set batch size preference"""
-        self.settings.batch_size = size
-        self.save_settings()
 
     def get_export_path(self) -> str:
         """Get saved export path"""

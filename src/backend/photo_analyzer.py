@@ -44,7 +44,7 @@ class PhotoAnalyzer:
                 all_photos = self._find_all_photos(afc, progress_callback)
 
                 total_photos = len(all_photos)
-                logger.info(f"Found {total_photos} photos to analyze")
+                logger.info(f"Found {total_photos} media files to analyze")
 
                 # Organize photos by year and month
                 for idx, photo in enumerate(all_photos):
@@ -90,7 +90,8 @@ class PhotoAnalyzer:
                          ) -> List[Photo]:
         """Find all photos and videos on the device"""
         all_photos = []
-        scanned_count = 0
+        # Use a list to track count across recursive calls (mutable reference)
+        photo_counter = [0]
 
         for base_path in self._photo_paths:
             try:
@@ -98,11 +99,10 @@ class PhotoAnalyzer:
                     continue
 
                 if progress_callback:
-                    progress_callback(f"Scanning {base_path}...", scanned_count, 0)
+                    progress_callback(f"Scanning {base_path}...", photo_counter[0], photo_counter[0])
 
-                photos = self._scan_directory_recursive(afc, base_path, progress_callback)
+                photos = self._scan_directory_recursive(afc, base_path, progress_callback, photo_counter)
                 all_photos.extend(photos)
-                scanned_count += len(photos)
 
             except Exception as e:
                 logger.warning(f"Could not scan {base_path}: {e}")
@@ -113,10 +113,13 @@ class PhotoAnalyzer:
     def _scan_directory_recursive(self,
                                    afc: AfcService,
                                    path: str,
-                                   progress_callback: Optional[Callable[[str, int, int], None]] = None
+                                   progress_callback: Optional[Callable[[str, int, int], None]] = None,
+                                   photo_counter: Optional[list] = None
                                    ) -> List[Photo]:
         """Recursively scan directory for photos"""
         photos = []
+        if photo_counter is None:
+            photo_counter = [0]
 
         try:
             items = afc.listdir(path)
@@ -133,19 +136,20 @@ class PhotoAnalyzer:
                     # Check if it's a directory
                     if info.get('st_ifmt') == 'S_IFDIR':
                         # Recursively scan subdirectory
-                        photos.extend(self._scan_directory_recursive(afc, item_path, progress_callback))
+                        photos.extend(self._scan_directory_recursive(afc, item_path, progress_callback, photo_counter))
                     else:
                         # Check if it's a photo or video
                         if self._is_photo_file(item):
                             photo = self._create_photo_from_stat(item_path, info)
                             if photo:
                                 photos.append(photo)
+                                photo_counter[0] += 1
 
-                                if progress_callback and len(photos) % 50 == 0:
+                                if progress_callback and photo_counter[0] % 50 == 0:
                                     progress_callback(
-                                        f"Found {len(photos)} media files...",
-                                        len(photos),
-                                        0
+                                        f"Found {photo_counter[0]} media files...",
+                                        photo_counter[0],
+                                        photo_counter[0]
                                     )
 
                 except Exception as e:
@@ -168,12 +172,14 @@ class PhotoAnalyzer:
             # Get file size
             size = stat_info.get('st_size', 0)
 
-            # Get creation time (birth time)
+            # Get creation time (birth time) - only use this for grouping
             created_date = stat_info.get('st_birthtime', None)
             if created_date is None:
-                created_date = stat_info.get('st_mtime', datetime.now())
+                # Skip files without creation date - we only want to group by actual creation date
+                logger.debug(f"Skipping {path}: no creation date available")
+                return None
 
-            # Get modification time
+            # Get modification time (stored but not used for grouping)
             modified_date = stat_info.get('st_mtime', None)
 
             return Photo(

@@ -17,6 +17,8 @@ class PhotoTreeView(ctk.CTkFrame):
         self.on_selection_changed = on_selection_changed
         self._year_stats: Dict[int, YearStats] = {}
         self._tree_items: Dict[str, str] = {}  # Maps year/month to tree item ID
+        self._animation_running = False
+        self._spinner_index = 0
 
         self._setup_ui()
 
@@ -30,12 +32,23 @@ class PhotoTreeView(ctk.CTkFrame):
         )
         title.pack(pady=(10, 5), padx=10, anchor="w")
 
+        # Loading frame (initially hidden)
+        self.loading_frame = ctk.CTkFrame(self)
+
+        self.loading_label = ctk.CTkLabel(
+            self.loading_frame,
+            text="⠋ Analyzing media...",
+            font=ctk.CTkFont(size=14),
+            text_color="gray"
+        )
+        self.loading_label.pack(pady=100)
+
         # Create scrollable frame for treeview
-        tree_frame = ctk.CTkFrame(self)
-        tree_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        self.tree_frame = ctk.CTkFrame(self)
+        self.tree_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
         # Create treeview with scrollbar
-        scrollbar = ttk.Scrollbar(tree_frame)
+        scrollbar = ttk.Scrollbar(self.tree_frame)
         scrollbar.pack(side="right", fill="y")
 
         # Configure style for dark theme
@@ -45,16 +58,19 @@ class PhotoTreeView(ctk.CTkFrame):
                         background="#2b2b2b",
                         foreground="white",
                         fieldbackground="#2b2b2b",
-                        borderwidth=0)
+                        borderwidth=0,
+                        font=("TkDefaultFont", 12),
+                        rowheight=28)
         style.configure("Treeview.Heading",
                         background="#1f538d",
                         foreground="white",
-                        borderwidth=0)
+                        borderwidth=0,
+                        font=("TkDefaultFont", 12, "bold"))
         style.map('Treeview', background=[('selected', '#1f538d')])
 
         # Create treeview
         self.tree = ttk.Treeview(
-            tree_frame,
+            self.tree_frame,
             columns=("count", "size"),
             selectmode="none",
             yscrollcommand=scrollbar.set
@@ -255,3 +271,32 @@ class PhotoTreeView(ctk.CTkFrame):
         """Enable or disable the tree view"""
         state = "normal" if enabled else "disabled"
         self.tree.configure(selectmode="none" if enabled else "none")
+
+    def show_loading(self):
+        """Show loading animation"""
+        self.tree_frame.pack_forget()
+        self.loading_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        self._animation_running = True
+        self._animate_spinner()
+
+    def hide_loading(self):
+        """Hide loading animation"""
+        self._animation_running = False
+        self.loading_frame.pack_forget()
+        self.tree_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+    def _animate_spinner(self):
+        """Animate the loading spinner"""
+        if not self._animation_running:
+            return
+
+        # Braille spinner characters for smooth animation
+        spinner_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        self._spinner_index = (self._spinner_index + 1) % len(spinner_chars)
+
+        self.loading_label.configure(
+            text=f"{spinner_chars[self._spinner_index]} Analyzing media..."
+        )
+
+        # Schedule next animation frame
+        self.after(100, self._animate_spinner)

@@ -9,6 +9,7 @@ dependencies = [
     "pymobiledevice3>=3.0.0",
     "pillow>=10.0.0",
     "contextvars>=2.4",
+    "pydantic>=2.0.0",
 ]
 
 [project.optional-dependencies]
