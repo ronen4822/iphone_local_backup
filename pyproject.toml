@@ -1,0 +1,29 @@
+[project]
+name = "iphone-local-backup"
+version = "0.1.0"
+description = "Professional iPhone photo backup application with selective year/month export"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "customtkinter>=5.2.2",
+    "pymobiledevice3>=3.0.0",
+    "pillow>=10.0.0",
+    "contextvars>=2.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.0.0",
+]
+
+[project.scripts]
+iphone-backup = "main:main"
+build-exe = "build:build_executable"
+
+[tool.uv]
+dev-dependencies = [
+    "pyinstaller>=6.0.0",
+]
+
+[tool.uv.scripts]
+build = "python build.py"
